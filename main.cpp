@@ -2,6 +2,7 @@
 #include <iostream>
 #include <lexbor/html/html.h>
 #include <lexbor/html/serialize.h>
+#include <lexbor/html/serialize.h>
 #include <lexbor/css/css.h>
 #include <lexbor/html/node.h>
 #include <lexbor/html/parser.h>
@@ -110,6 +111,7 @@ int main(int argc, char* argv[]) {
       // lxb_html_serialize_deep_cb(&document->body->element.element.node, print_callback, nullptr);  
     }
 
+    lxb_dom_node_simple_walk(&document->body->element.element.node, callback, nullptr);
     lxb_dom_node_simple_walk(&document->body->element.element.node, callback, nullptr);
 
 
