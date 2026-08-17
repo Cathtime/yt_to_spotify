@@ -1,1 +1,0 @@
-/usr/bin/c++ -g -Wl,--dependency-file=CMakeFiles/scraper.dir/link.d CMakeFiles/scraper.dir/main.cpp.o -o scraper  -Wl,-rpath,/usr/local/lib /usr/local/lib/libcpr.so.1.15.0 /usr/local/lib/liblexbor.so /usr/lib/x86_64-linux-gnu/libcurl.so /usr/lib/x86_64-linux-gnu/libcurl.so
