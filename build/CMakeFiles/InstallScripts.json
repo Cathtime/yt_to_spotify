@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/joseb/yt_to_spotify/build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

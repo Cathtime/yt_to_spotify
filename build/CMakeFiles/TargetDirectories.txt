@@ -1,0 +1,3 @@
+/home/joseb/yt_to_spotify/build/CMakeFiles/scraper.dir
+/home/joseb/yt_to_spotify/build/CMakeFiles/edit_cache.dir
+/home/joseb/yt_to_spotify/build/CMakeFiles/rebuild_cache.dir
