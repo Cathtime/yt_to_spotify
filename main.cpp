@@ -1,6 +1,7 @@
 #include <cpr/cpr.h>
 #include <iostream>
 #include <lexbor/html/html.h>
+#include <lexbor/html/serialize.h>
 #include <lexbor/css/css.h>
 #include <lexbor/html/node.h>
 #include <lexbor/html/parser.h>
@@ -9,20 +10,69 @@
 #include <cstdio>
 #include <cstring>
 
-lxb_status_t callback(lxb_dom_node_t* node, lxb_css_selector_specificity_t spec, void *ctx) {
-    std::cout << "Found!\n";
+struct SerializeContext {
+    std::string tail;
+    std::set<std::string> video_ids;    
+};
 
-    std::cout << node->local_name;
+static bool is_valid_youtube_id(const std::string& s) {
+    if (s.size() != 11) return false;
+    for (unsigned char ch : s) {
+        if (!(std::isalnum(ch) || ch == '_' || ch == '-')) return false;
+    }
+    return true;
+}
+
+
+lxb_status_t print_callback(const lxb_char_t* data, size_t len, void* ctx) {
+    auto* sctx = static_cast<SerializeContext*>(ctx);
+    if (sctx == nullptr || data == nullptr || len == 0) {
+        return LXB_STATUS_OK;
+    }
+
+    static const std::string anchor = "\"watchEndpoint\":{\"videoId\":\"";
+    static constexpr size_t MAX_TAIL = 32 * 1024; // keep memory bounded
+
+    sctx->tail.append(reinterpret_cast<const char*>(data), len);
+
+    size_t search_pos = 0;
+    while (true) {
+        size_t p = sctx->tail.find(anchor, search_pos);
+        if (p == std::string::npos) break;
+
+        size_t id_start = p + anchor.size();
+        size_t id_end = sctx->tail.find('"', id_start);
+
+        if (id_end == std::string::npos) {
+            break;
+        }
+
+        std::string candidate = sctx->tail.substr(id_start, id_end - id_start);
+        if (is_valid_youtube_id(candidate)) {
+            sctx->video_ids.insert(candidate);
+        }
+
+        search_pos = id_end + 1;
+    }
+
+    if (sctx->tail.size() > MAX_TAIL) {
+        sctx->tail.erase(0, sctx->tail.size() - MAX_TAIL);
+    }
 
     return LXB_STATUS_OK;
 }
 
-lxb_status_t print_callback(const lxb_char_t *data, size_t len, void *ctx) {
-    // Cast data safely to const char* and use std::cout to print it
-    std::cout << std::string_view(reinterpret_cast<const char*>(data), len) << std::endl;
-    return LXB_STATUS_OK;
-}
+lexbor_action_t callback(lxb_dom_node_t* node, void* ctx) {
+    SerializeContext sctx;
 
+    lxb_html_serialize_cb(node, print_callback, &sctx);
+
+    for (const auto& id : sctx.video_ids) {
+        std::cout << id << "\n";
+    }
+
+    return LEXBOR_ACTION_OK;
+}
 
 int main(int argc, char* argv[]) {
 
@@ -46,65 +96,8 @@ int main(int argc, char* argv[]) {
       // lxb_html_serialize_deep_cb(&document->body->element.element.node, print_callback, nullptr);  
     }
 
-    lxb_selectors_t* selectors = lxb_selectors_create();
+    lxb_dom_node_simple_walk(&document->body->element.element.node, callback, nullptr);
 
-    lxb_status_t initSelec = lxb_selectors_init(selectors);
-
-    if (initSelec != LXB_STATUS_OK) {
-        std::cerr << "Selector failed to initialize\n";
-    }
-
-    lxb_css_parser_t* parser =  lxb_css_parser_create();
-    lxb_css_parser_init(parser, NULL);
-
-    // starts off as regular string
-    std::string selector = "watchEndpoint";
-
-    // convert it to lexbors version of char pointer
-    const lxb_char_t* lexbor_string = reinterpret_cast<const lxb_char_t*>(selector.c_str());
-
-    size_t length = selector.size(); // std::string knows its size so we use this 
-
-    lxb_css_selector_list_t *list = lxb_css_selectors_parse(parser, lexbor_string, length);
-
-    if (parser->status != LXB_STATUS_OK) {
-        std::cout << "Failed\n";
-        std::cerr << parser->status << std::endl;
-    } else {
-        std:: cout << "List printed out: \n";
- //       lxb_css_selector_serialize_list(list, print_callback, nullptr);
-    }
-
-    
-/*
-    lxb_status_t foundClass = lxb_selectors_find(
-        selectors, 
-        &document->head->element.element.node, 
-        list, 
-        callback,
-        nullptr
-    );
-
-    if (foundClass != LXB_STATUS_OK) {
-        std::cout << "Something went wrong here smh\n";
-        std::cerr << foundClass << std::endl;
-    }
-*/
-    lxb_status_t foundClass = lxb_selectors_find(
-        selectors, 
-        &document->body->element.element.node, 
-        list, 
-        callback,
-        nullptr
-    );
-
-    if (foundClass != LXB_STATUS_OK) {
-        std::cout << "Something went wrong here smh\n";
-        std::cerr << foundClass << std::endl;
-    } else {
-        std:: cout << "List printed out: \n";
-       // lxb_css_selector_serialize_list(list, print_callback, nullptr);
-    }
 
    // document->body->element.element.node.first_child;    
 
