@@ -33,19 +33,29 @@ lxb_status_t print_callback(const lxb_char_t* data, size_t len, void* ctx) {
     static const std::string anchor = "\"watchEndpoint\":{\"videoId\":\"";
     static constexpr size_t MAX_TAIL = 32 * 1024; // keep memory bounded
 
+    // save what we're receiving to the tail 
     sctx->tail.append(reinterpret_cast<const char*>(data), len);
+
+    std::cout << "size tail: " << sctx->tail.size() << "\n";
 
     size_t search_pos = 0;
     while (true) {
         size_t p = sctx->tail.find(anchor, search_pos);
         if (p == std::string::npos) break;
 
+        std::cout << "p: " << p << "\n";
+
         size_t id_start = p + anchor.size();
+
+        std::cout << "id_start: " << id_start << "\n";
+
         size_t id_end = sctx->tail.find('"', id_start);
 
         if (id_end == std::string::npos) {
             break;
         }
+
+      //  std::cout << "tail: " << sctx->tail << std::endl;
 
         std::string candidate = sctx->tail.substr(id_start, id_end - id_start);
         if (is_valid_youtube_id(candidate)) {
@@ -57,6 +67,8 @@ lxb_status_t print_callback(const lxb_char_t* data, size_t len, void* ctx) {
 
     if (sctx->tail.size() > MAX_TAIL) {
         sctx->tail.erase(0, sctx->tail.size() - MAX_TAIL);
+
+        //std::cout << "Current tail: " << sctx->tail << std::endl;
     }
 
     return LXB_STATUS_OK;
@@ -67,8 +79,10 @@ lexbor_action_t callback(lxb_dom_node_t* node, void* ctx) {
 
     lxb_html_serialize_cb(node, print_callback, &sctx);
 
+    std::cout << "tail: \n" << sctx.tail << "\n";
+
     for (const auto& id : sctx.video_ids) {
-        std::cout << id << "\n";
+        std::cout << "https://www.youtube.com/watch?v=" << id << "\n";
     }
 
     return LEXBOR_ACTION_OK;
@@ -99,7 +113,9 @@ int main(int argc, char* argv[]) {
     lxb_dom_node_simple_walk(&document->body->element.element.node, callback, nullptr);
 
 
-   // document->body->element.element.node.first_child;    
+   // document->body->element.element.node.first_child;   
+   
+   lxb_html_document_destroy(document);
 
     return 0;
 }
