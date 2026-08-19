@@ -33,6 +33,8 @@ struct PlaylistData {
     static constexpr size_t MAX_TAIL = 32 * 1024;
 };
 
+// next up "SignatureCipher"
+// (help)
 struct SignatureData {
     static constexpr std::string_view anchor = "\"watchEndpoint\":{\"videoId\":\"";
     static constexpr char ending = '"';
@@ -47,7 +49,7 @@ struct BaseData {
 
 struct SerializeContext {
     std::string tail;
-    std::set<std::string> video_ids;
+    std::set<std::string> element_values;
     Type type;    
 };
 
@@ -87,10 +89,10 @@ void node_string_manip(const lxb_char_t* data, size_t len, SerializeContext* sct
 
         std::string candidate = sctx->tail.substr(id_start, id_end - id_start);
         if (sctx->type == Type::PLAYLIST && is_valid_youtube_id(candidate)) {
-            sctx->video_ids.insert(candidate);
+            sctx->element_values.insert(candidate);
         }
 
-        sctx->video_ids.insert(candidate);  
+        sctx->element_values.insert(candidate);  
 
         search_pos = id_end + 1;
     }
@@ -165,7 +167,7 @@ int main(int argc, char* argv[]) {
 
     lxb_dom_node_simple_walk(&document->body->element.element.node, callback, &playlistctx);
 
-    for (const auto& id : playlistctx.video_ids) {
+    for (const auto& id : playlistctx.element_values) {
         std::cout << "https://www.youtube.com/watch?v=" << id << "\n";
     }
 
@@ -176,7 +178,7 @@ int main(int argc, char* argv[]) {
 
     lxb_dom_node_simple_walk(&document->head->element.element.node, callback, &Basectx);
 
-    for (const auto& id : Basectx.video_ids) {
+    for (const auto& id : Basectx.element_values) {
         std::cout << id << "\n";
     }
 
