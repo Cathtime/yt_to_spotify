@@ -18,23 +18,29 @@
 
 // using an enum to correctly seperate playlist data from video data
 // even if it makes my life worse some how but thats what I get for working with C libraries smh
+
+// for the playlist, since we're seperating INSIDE THE FUNCTION (although maybe I'll do a helper function to reduce code dupe)
+// I need to get everything relevant to the playlist we need
+// video id size, the anchor, etc
+
+// okay so this is a lot of bullshit in here but there's nothing I can do unless there is but we'll see later
+// to try and make everything MAKE SENSE and not have to have like 5 different callbacks for something that can be simplified
+// I'm going to use SerializeContext as the thing that brings everything else together 
+// (having the output that gives the videoids, signaturecipher, base.js, etc)
+// the other structs just hold the data for each case (what to search, when to stop etc)
+
 enum class Type {
     PLAYLIST,
     SIGNATURE,
     BASE
 };
 
-// for the playlist, since we're seperating INSIDE THE FUNCTION (although maybe I'll do a helper function to reduce code dupe)
-// I need to get everything relevant to the playlist we need
-// video id size, the anchor, etc
 struct PlaylistData {
     static constexpr std::string_view anchor = "\"watchEndpoint\":{\"videoId\":\"";
     static constexpr char ending = '"';
     static constexpr size_t MAX_TAIL = 32 * 1024;
 };
 
-// next up "SignatureCipher"
-// (help)
 struct SignatureData {
     static constexpr std::string_view anchor = "\"watchEndpoint\":{\"videoId\":\"";
     static constexpr char ending = '"';
@@ -53,19 +59,25 @@ struct SerializeContext {
     Type type;    
 };
 
-// okay so this is a lot of bullshit in here but there's nothing I can do unless there is but we'll see later
-// to try and make everything MAKE SENSE and not have to have like 5 different callbacks for something that can be simplified
-// I'm going to use SerializeContext as the thing that brings everything else together
-// the other structs just hold the data for each case
-
-static bool is_valid_youtube_id(const std::string& s) {
+// a valid youtube id should be 11 characters and have no spaces or numbers 
+// (or special symbols other than underscore and dash)
+// if it violates any of these prerequisites it gets slapped with a false
+bool is_valid_youtube_id(const std::string& s) {
     if (s.size() != 11) return false;
+
     for (unsigned char ch : s) {
+
         if (!(std::isalnum(ch) || ch == '_' || ch == '-')) return false;
+
     }
     return true;
 }
 
+
+// I didn't know what to call this to be honest but yeah
+// I called it that because we are just getting every node from the document and reading its data
+// that data then is searched for certain information we might want such as
+// if a playlist is sent in we send in the context struct and also the playlist struct via the template
 template <typename T>
 void node_string_manip(const lxb_char_t* data, size_t len, SerializeContext* sctx, const T& sData) {
      sctx->tail.append(reinterpret_cast<const char*>(data), len);
@@ -108,6 +120,8 @@ lxb_status_t print_callback(const lxb_char_t* data, size_t len, void* ctx) {
         return LXB_STATUS_OK;
     }
 
+    // switch statement looks coooler than if statements (for this at least)
+
     switch(sctx->type) {
         case Type::BASE:
             BaseData Bdata;
@@ -123,6 +137,10 @@ lxb_status_t print_callback(const lxb_char_t* data, size_t len, void* ctx) {
 
             break;
         
+        // TODO: grab the signature data from the html to then pass in to that library 
+        // (look I'm all for learning and doing things myself)
+        // (but im not going to going to be here looking at whether I should rebuild the base.js from scratch in c++ or run a V8 engine)
+        // thx :3
         case Type::SIGNATURE:
             break;
     }
